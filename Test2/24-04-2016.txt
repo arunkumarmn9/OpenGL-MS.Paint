@@ -1,0 +1,598 @@
+// Picking.cpp : Defines the entry point for the console application.
+//
+
+#include "stdafx.h"
+#include<stdlib.h>
+#include<stdio.h>
+#include<GL\glut.h>
+#define _USE_MATH_DEFINES
+#include<math.h>
+#include<iostream>
+#include<Windows.h>
+using namespace std;
+int w[3]={510,540};
+int x2,y2,h=400;
+long a,b,c;
+
+
+
+int n=5;
+int depth,palete,compression,hsize,hoffset,hres,vres,planes,fsize,ds;
+
+
+
+short int countt=0,first=-1,func=0,brush_size=20,brush_type=1;
+GLfloat cr=1,cg,cb,r;
+GLfloat text_cur_coordinates_x=0,text_cur_coordinates_y=0;
+struct pixels
+{
+float buf[3];
+}pix[21];
+typedef struct textbuf
+{
+	float x[100],y[100];
+	int type;
+	char string[100];
+}text;
+void write()
+{
+	FILE *ip;
+	long a=0;
+	void *buf[4];
+#pragma warning(disable:4996)
+	ip=fopen("C:\\users\\arun\\desktop\\itybnh.bmp","wb");
+	fputc('B',ip);
+	fputc('M',ip);
+	a=2;//Identifiers 2bytes
+	DWORD t=900054;
+	fwrite(&t,4,1,ip);//file size 6bytes
+	t=0;
+	fwrite(&t,4,1,ip);//reserved for later use(may be represent the Orientation) 10bytes
+	t=54;
+	fwrite(&t,4,1,ip);//data offset 14bytes
+	t=40;
+	fwrite(&t,4,1,ip);//header size 18bytes
+	t=500;
+    fwrite(&t,4,1,ip);//width 22bytes
+	t=600;
+	fwrite(&t,4,1,ip);//height 26bytes
+	t=planes=1;
+fwrite(&t,2,1,ip);//number of planes 28bytes
+t=24;
+fwrite(&t,2,1,ip);//bits per pixel=24 30bytes
+t=0;
+fwrite(&t,4,1,ip);//compression=0 34bytes
+t=900000;
+fwrite(&t,4,1,ip);//data size 38bytes
+t=0;
+fwrite(&t,4,1,ip);//Hresolution 42bytes
+t=0;
+fwrite(&t,4,1,ip);//Vresolution 46bytes
+t=0;
+fwrite(&t,4,1,ip);//Colors 50bytes
+t=0;
+fwrite(&t,4,1,ip);//Important Colors 54bytes
+
+//since No color palete occurs for 24 bit depth image,proceeding to the bitmap data
+float pix[3];
+long c=0;
+unsigned __int8 io[3];//This type is integer with 1 byte memory
+int i,j;
+for(j=0;j<600;j++)
+{
+	for(i=0;i<500;i++)
+	{
+		glReadPixels(i,j,1,1,GL_RGB,GL_FLOAT,pix);
+		io[0]=pix[2]*255;//Blue,Because Bitmap requires BGR format and the color values should be integer with range 0-255		
+		io[1]=pix[1]*255;//Green
+		io[2]=pix[0]*255;//Red
+		fwrite(&io,3,1,ip);
+		c+=3;
+
+		
+	}
+}
+cout<<"\nTOTAL DATA WRITTEN IS :"<<c<<"Bytes"<<a<<"bytes="<<54+c<<"i and j:"<<i<<j;
+
+fclose(ip);	
+
+}
+void init()
+{
+	glClearColor(1,1,1,1);
+}
+void draw_line(int x,int y)
+{   
+	
+	glColor3f(cr,cg,cb);
+	glBegin(GL_LINES);
+	glVertex2i(x2,600-y2);
+	glVertex2i(x,600-y);
+	glEnd();
+	glFlush();
+	
+	
+}
+void draw_pixel(GLint cx,GLint cy)
+{
+	
+	glBegin(GL_POINTS);
+	glVertex2i(cx,cy);
+	glEnd();
+}
+
+void plotpixels(GLint h,GLint k,GLint x,GLint y)
+{
+	draw_pixel(x+h,y+k);
+	draw_pixel(-x+h,y+k);
+	draw_pixel(x+h,-y+k);
+	draw_pixel(-x+h,-y+k);
+	draw_pixel(y+h,x+k);
+	draw_pixel(-y+h,x+k);
+	draw_pixel(y+h,-x+k);
+	draw_pixel(-y+h,-x+k);
+}
+
+void circle_draw(GLint h,GLint k,GLfloat r)
+{
+	GLint d=1-r,x=0,y=r;
+	while(y>x)
+	{
+		plotpixels(h,k,x,y);
+		if(d<0)d+=2*x+3;
+		else
+		{d+=2*(x-y)+5;--y;}
+		++x;
+	}
+	plotpixels(h,k,x,y);
+}
+void draw_circle_unfilled(int x,int y)
+{
+	float temp;//to find the distance between the two points x2,y2,x,y using distance formula from 1st puc maths
+	temp=sqrt(double ((x2-x)*(x2-x))+((600-y2-600+y)*(600-y2-600+y)));
+	glColor3f(cr,cg,cb);
+	circle_draw(x2,600-y2,temp);
+}
+void draw_lines_strip(int x,int y)
+{
+	glColor3f(cr,cg,cb);
+	glBegin(GL_LINES);
+	glVertex2i(x2,600-y2);
+	glVertex2i(x,600-y);
+	glEnd();
+	glFlush();
+	x2=x;y2=y;
+}
+void draw_color_box(float r,float g,float b)
+{
+	glColor3f(r,g,b);
+	glBegin(GL_QUADS);
+	glVertex2i(w[0],h);
+	glVertex2i(w[0],h-30);	
+	glVertex2i(w[1],h-30);
+	glVertex2i(w[1],h);
+	glEnd();
+	glLineWidth(1.5);
+	glColor3f(0,0,0);
+	glBegin(GL_LINE_STRIP);
+	glVertex2i(w[0],h);
+	glVertex2i(w[0],h-30);	
+	glVertex2i(w[1],h-30);
+	glVertex2i(w[1],h);
+	glVertex2i(w[0],h);
+	glEnd();
+	h=h-40;
+	
+}
+void drawobjects(GLenum mode)
+{
+	if(mode==GL_SELECT)glLoadName(1);
+	w[0]=510;w[1]=540;h=400;
+	draw_color_box(1,1,1);
+	if(mode==GL_SELECT)glLoadName(2);
+	draw_color_box(0,0,0);
+	if(mode==GL_SELECT)glLoadName(3);draw_color_box(1,0,0);
+	if(mode==GL_SELECT)glLoadName(4);draw_color_box(0,1,0);
+	if(mode==GL_SELECT)glLoadName(5);draw_color_box(0,0,1);
+	if(mode==GL_SELECT)glLoadName(6);w[0]=550;w[1]=580;h=400;draw_color_box(1,1,0);
+	if(mode==GL_SELECT)glLoadName(7);draw_color_box(0,1,1);
+	if(mode==GL_SELECT)glLoadName(8);draw_color_box(1,0,1);
+	if(mode==GL_SELECT)glLoadName(9);draw_color_box(0,.7,.5);
+	if(mode==GL_SELECT)glLoadName(10);draw_color_box(1,.5,0);
+	if(mode==GL_SELECT)glLoadName(11);
+	glLineWidth(2);
+	glColor4f(1,1,1,0);//White color for the Cover Boxes in the Tool Bar
+	/*I made this Color as Transperent as the ALPHA value is Zero,Because We want to select the
+	TOOLBAR items for drawing. to select these items i put a invisible box on each item in TOOLBAR 
+	so the user can only visible TOOLBAR items.*/
+	//So,All the Boxes that are drawn below is invisible.
+	glBegin(GL_QUADS);//Cover Box for the Circle
+	glVertex2i(510,420);glVertex2i(540,420);glVertex2i(540,450);glVertex2i(510,450);
+	glEnd();
+	if(mode==GL_SELECT)glLoadName(12);
+	glBegin(GL_QUADS);//Cover Box for the Square
+	glVertex2i(550,420);glVertex2i(580,420);glVertex2i(580,450);glVertex2i(550,450);
+	glEnd();
+	if(mode==GL_SELECT)glLoadName(13);
+	glBegin(GL_QUADS);//Cover Box for the Brush
+	glVertex2i(510,460);glVertex2i(540,460);glVertex2i(540,490);glVertex2i(510,490);
+	glEnd();
+	if(mode==GL_SELECT)glLoadName(14);
+	glBegin(GL_QUADS);//Cover Box for the Eraser
+	glVertex2i(550,460);glVertex2i(580,460);glVertex2i(580,490);glVertex2i(550,490);
+	glEnd();
+   if(mode==GL_SELECT)glLoadName(15);
+	glBegin(GL_QUADS);//Cover Box for the Pencil
+	glVertex2i(510,500);glVertex2i(540,500);glVertex2i(540,530);glVertex2i(510,530);
+	glEnd();
+	if(mode==GL_SELECT)glLoadName(16);
+	glBegin(GL_QUADS);//Cover Box for the Text
+	glVertex2i(550,500);glVertex2i(580,500);glVertex2i(580,530);glVertex2i(550,530);
+	glEnd();
+	if(mode==GL_SELECT)glLoadName(17);
+	glBegin(GL_QUADS);//Cover Box for the Lines
+	glVertex2i(510,540);glVertex2i(540,540);glVertex2i(540,570);glVertex2i(510,570);
+	glEnd();
+	if(mode==GL_SELECT)glLoadName(18);
+	glBegin(GL_QUADS);//Cover Box for the Lines Strip
+	glVertex2i(550,540);glVertex2i(580,540);glVertex2i(580,570);glVertex2i(550,570);
+	glEnd();
+	
+}
+void draw_toolbar_items()
+{
+	int i=0;
+	
+	glColor3f(0,0,0);//Black Color for the Objects inside the Tool Bar Boxes
+	glBegin(GL_POINTS);//Circle Box
+	i=0;
+	while(i!=362)
+	{ 
+		glVertex2f(525+10*cos(M_PI*i/180),435+10*sin(M_PI*i/180));
+		i=i+1;
+	}
+	glEnd();
+
+	glBegin(GL_LINE_STRIP);//Rectangle Box
+	glVertex2i(555,425);glVertex2i(575,425);glVertex2i(575,445);glVertex2i(555,445);glVertex2i(555,425);
+	glEnd();
+
+	glBegin(GL_LINES);//Lines Box
+	glVertex2i(535,544);glVertex2i(512,564);
+	glEnd();
+
+	glBegin(GL_LINE_STRIP);//Lines Strip Box
+	glVertex2i(552,543);glVertex2i(560,563);glVertex2i(570,555);glVertex2i(576,570);
+	glEnd();
+
+	glBegin(GL_LINE_STRIP);//Pencil Box
+	glVertex2i(520,505);glVertex2i(530,505);glVertex2i(530,520);glVertex2i(520,520);glVertex2i(520,505);
+	glEnd();
+	glBegin(GL_LINES);
+	glVertex2f(525,505);glVertex2f(525,520);glVertex2f(525,505);glVertex2f(525,520);
+	glEnd();
+	glBegin(GL_TRIANGLES);
+	glVertex2i(530,520);glVertex2i(520,520);glVertex2i(525,525);
+	glEnd();
+
+	glRasterPos2i(555,505);//Text Box
+	glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24,'A');
+
+	glColor3f(1,1,1);
+	glBegin(GL_QUADS);//Eraser Box
+	glVertex2f(557.5,467.5);glVertex2f(572.5,467.5);glVertex2f(572.5,482.5);glVertex2f(557.5,482.5);
+	glEnd();
+	glColor3f(0,0,0);
+	glRasterPos2i(561,471);
+	glutBitmapCharacter(GLUT_BITMAP_HELVETICA_10,'E');
+
+	glBegin(GL_TRIANGLE_FAN);
+	glVertex2f(525,475);
+	glVertex2f(540,475);
+	for(int i=0;i<361;i++)
+	{
+		glColor4f(0,0,0,0);
+		glVertex2f(525+15*cos(M_PI*i/180),475+15*sin(M_PI*i/180));
+	}
+	glEnd();
+	glLineWidth(2);
+	glColor3f(1,1,1);//White color for the Cover Boxes in the Tool Bar
+	glBegin(GL_LINE_LOOP);//Cover Box for the Circle
+	glVertex2i(510,420);glVertex2i(540,420);glVertex2i(540,450);glVertex2i(510,450);
+	glEnd();
+	glBegin(GL_LINE_LOOP);//Cover Box for the Square
+	glVertex2i(550,420);glVertex2i(580,420);glVertex2i(580,450);glVertex2i(550,450);
+	glEnd();
+
+	glBegin(GL_LINE_LOOP);//Cover Box for the Brush
+	glVertex2i(510,460);glVertex2i(540,460);glVertex2i(540,490);glVertex2i(510,490);
+	glEnd();
+	glBegin(GL_LINE_LOOP);//Cover Box for the Eraser
+	glVertex2i(550,460);glVertex2i(580,460);glVertex2i(580,490);glVertex2i(550,490);
+	glEnd();
+
+	glBegin(GL_LINE_LOOP);//Cover Box for the Pencil	
+	glVertex2i(510,500);glVertex2i(540,500);glVertex2i(540,530);glVertex2i(510,530);
+	glEnd();
+	glBegin(GL_LINE_LOOP);//Cover Box for the Text		
+	glVertex2i(550,500);glVertex2i(580,500);glVertex2i(580,530);glVertex2i(550,530);
+	glEnd();
+
+	glBegin(GL_LINE_LOOP);//Cover Box for the Lines
+	glVertex2i(510,540);glVertex2i(540,540);glVertex2i(540,570);glVertex2i(510,570);
+	glEnd();
+	glBegin(GL_LINE_LOOP);//Cover Box for the Lines Strip
+	glVertex2i(550,540);glVertex2i(580,540);glVertex2i(580,570);glVertex2i(550,570);
+	glEnd();
+}
+void draw_text(int c)
+{
+	glColor3f(cr,cg,cb);
+	glRasterPos2f(x2+1,580-y2);
+	glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24,c);
+	glFlush();
+}
+
+void display()
+{
+	glClear(GL_COLOR_BUFFER_BIT);
+	glColor3f(.5,.5,.5);
+	glBegin(GL_QUADS);//Gray colored TOOLBAR Background Rectangle
+	glVertex2f(500,0);
+	glVertex2f(600,0);
+	glVertex2f(600,600);
+	glVertex2f(500,600);
+	glEnd();
+	glColor3f(.4,0.4,0.4);
+	glLineWidth(6);
+	glBegin(GL_LINES);//Gray Colored Lines that seperates WORK AREA and TOOLBAR
+	glVertex2i(500,0);
+	glVertex2i(500,600);
+	glEnd();
+	glLineWidth(3);
+	glBegin(GL_LINES);
+	glVertex2i(500,200);
+	glVertex2i(600,200);
+	glVertex2i(500,410);
+	glVertex2i(600,410);
+	glEnd();
+	glColor3f(cr,cg,cb);
+	glBegin(GL_QUADS);//Current Selected Color Indicator Box in TOOLBAR
+	glVertex2i(510,190);
+	glVertex2i(580,190);
+	glVertex2i(580,120);
+	glVertex2i(510,120);
+	glEnd();
+	glLineWidth(1);
+	draw_toolbar_items();
+	drawobjects(GL_RENDER);
+	glFlush();
+
+}
+
+void processhits(GLint hits,GLuint buffer[])
+{
+	unsigned int i,j;
+	GLuint ii,jj,names,*ptr;
+	printf("hits=%d\n",hits);
+	ptr=(GLuint *)buffer;
+	for(i=0;i<hits;i++)
+	{
+		names=*ptr;
+		ptr+=3;
+		for(j=0;j<names;j++)
+		{
+			switch(*ptr)
+			{
+			case 1:cr=1;cg=1;cb=1;break;
+			case 2:cr=0;cg=0;cb=0;break;
+			case 3:cr=1;cg=0;cb=0;break;
+			case 4:cr=0;cg=1;cb=0;break;
+			case 5:cr=0;cg=0;cb=1;break;
+			case 6:cr=1;cg=1;cb=0;break;
+			case 7:cr=0;cg=1;cb=1;break;
+			case 8:cr=1;cg=0;cb=1;break;
+			case 9:cr=0;cg=.7;cb=.5;break;
+			case 10:cr=1;cg=.5;cb=0;break;
+			case 11:func=4;break;
+			case 12:func=6;printf("Selected Square\n");break;
+	     	case 13:func=5;break;
+			case 14:func=8;break;
+			case 15:func=3;break;
+			case 16:func=7;break;
+			case 17:func=1;break;
+			case 18:func=2;first=-1;break;
+			}
+
+			ptr++;
+			glColor3f(cr,cg,cb);
+	glBegin(GL_QUADS);//Current Selected Color Indicator Box in TOOLBAR
+	glVertex2i(510,190);
+	glVertex2i(580,190);
+	glVertex2i(580,120);
+	glVertex2i(510,120);
+	glEnd();
+	glFlush();
+		}
+		printf("\n");
+	}
+
+}
+
+#define SIZE 512
+void motion(int x,int y)
+{
+	if(func==3)
+	{ glColor3f(cr,cg,cb);
+		glBegin(GL_POINTS);
+		glVertex2i(x,600-y);
+		glEnd();
+		glFlush();
+	}
+	else if(func==5)
+	{ 
+		glPointSize(1);
+		a=rand()%100;//for the number of points
+		glBegin(GL_TRIANGLE_FAN);
+		glColor4f(cr,cg,cb,.8);
+		glVertex2f(x,600-y);
+		glVertex2f(x+5,600-y);
+		for(int i=0;i<361;i++)
+	   {
+		glColor4f(cr,cg,cb,0);
+		glVertex2f(x+(brush_size/2)*cos(M_PI*i/180),600-y+(brush_size/2)*sin(M_PI*i/180));
+	   }
+		glEnd();
+		glFlush();
+	}
+	else if(func==9)
+	{
+		glPointSize(1);
+		a=rand()%5;//for the number of points
+		
+		switch(brush_type)
+		{
+		case 1:glBegin(GL_POINTS);a=rand()%75;break;
+		case 2:glBegin(GL_TRIANGLES);break;
+		case 3:glBegin(GL_LINES);break;
+		case 4:glBegin(GL_POLYGON);break;
+		case 5:glBegin(GL_LINE_STRIP);break;
+		}
+		
+		glColor3f(cr,cg,cb);
+		glVertex2f(x,600-y);
+		glVertex2f(x+5,600-y);
+		for(int i=0;i<a;i++)
+	   {
+		   glColor4f(cr,cg,cb,.5);
+		b=rand()%360;//the angle of each point
+		c=rand()%brush_size;//brush size
+		glVertex2f(x+c*cos(M_PI*b/180),600-y+c*sin(M_PI*b/180));
+	   }
+		glEnd();
+		glFlush();
+	}
+}
+void ne(int id)
+{
+	switch(id)
+	{
+	case 1:func=1;write();
+		break;
+	case 2:func=2;first=-1;break;
+	case 3:func=3;break;
+	case 4:func=4;break;
+	case 5:func=9;break;
+	
+	}
+}
+void mouse(int button,int status,int x,int y)
+{
+	GLuint selectbuf[SIZE];
+	GLuint hits;
+	GLint viewport[4];
+	if(button==GLUT_LEFT_BUTTON && status==GLUT_DOWN)
+	{
+		printf("x=%d,y=%d\n",x,y);
+		
+		switch(func)
+		{
+		case 1:glPointSize(1.0);
+			for(int k=0;k<21;k++)
+			   {glColor3f(pix[k].buf[0],pix[k].buf[1],pix[k].buf[2]);
+				   glBegin(GL_POINTS);
+				   glVertex2f(text_cur_coordinates_x,text_cur_coordinates_y+k);
+				   glEnd();
+			   }
+			if(countt==0){x2=x;y2=y;countt=1;}
+			   else {draw_line(x,y);countt=0;}
+			break;
+		case 2:if(first==1){draw_lines_strip(x,y);} else  {x2=x;y2=y;first=1;}
+			   	break;
+		case 4:if(countt==0){x2=x;y2=y;countt=1;}
+			   else {draw_circle_unfilled(x,y);countt=0;}
+			break;
+		case 7:text_cur_coordinates_x=x;text_cur_coordinates_y=600-y;
+			for(int i=0;i<21;i++){
+			glReadPixels(x,600-(y+i),1.0,1.0,GL_RGB,GL_FLOAT,pix[i].buf);
+			}glLineWidth(1.0);
+			glColor3f(0,0,0);glBegin(GL_LINES);glVertex2f(x,600-y);
+			glVertex2f(x,580-y);glEnd();glFlush();x2=x;y2=y;break;			
+		default:
+		x2=x;y2=y;break;
+		}
+		glGetIntegerv(GL_VIEWPORT,viewport);
+		glSelectBuffer(SIZE,selectbuf);
+		glRenderMode(GL_SELECT);
+		glInitNames();
+		glPushName(0);
+		glMatrixMode(GL_PROJECTION);
+		glPushMatrix();
+		glLoadIdentity();
+		gluPickMatrix((GLdouble)x,(GLdouble)(viewport[3]-y),5,5,viewport);
+		//gluOrtho2D(-2,2,-2,2);
+		gluOrtho2D(0,600,0,600);
+		drawobjects(GL_SELECT);
+		glMatrixMode(GL_PROJECTION);
+		glPopMatrix();
+		hits=glRenderMode(GL_RENDER);
+		processhits(hits,selectbuf);
+		glFlush();
+
+
+
+	}
+}
+
+void reshape(int w,int h)
+{
+	glViewport(0,0,w,h);
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	
+	gluOrtho2D(0,600,0,600);
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+
+}
+void keyboard(unsigned char key,int x,int y)
+{
+	switch(key)
+	{
+	case 27:exit(0);break;
+	case 97:draw_text(97);break;
+	case 3:break;
+	case 65:draw_text(65);break;
+		
+	}
+}
+void pass(int x,int y)
+{}
+int main(int argc,char * argv[])
+{
+glutInit(&argc,argv);
+glutInitDisplayMode(GLUT_RGB|GLUT_SINGLE);
+glutInitWindowSize(600,600);
+glutCreateWindow("Picking Example");
+init();
+glutCreateMenu(ne);
+glutAddMenuEntry("Lines",1);
+glutAddMenuEntry("Lines Strip",2);
+glutAddMenuEntry("Pencil",3);
+glutAddMenuEntry("Circle",4);
+glutAddMenuEntry("Spray",5);
+glutAttachMenu(GLUT_RIGHT_BUTTON);
+glutReshapeFunc(reshape);
+glutDisplayFunc(display);
+glutMouseFunc(mouse);
+glutPassiveMotionFunc(pass);
+glutKeyboardFunc(keyboard);
+glutMotionFunc(motion);
+glEnable(GL_BLEND);
+glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
+glutMainLoop();
+return 0;
+
+
+}
+
